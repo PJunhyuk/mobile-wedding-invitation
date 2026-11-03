@@ -1,0 +1,21 @@
+# 푸시마다 npm run check (타입·린트·글꼴 커버리지·지도 링크·빌드). 실패하면 GitHub 이 메일로 알립니다.
+# Cloudflare(Workers Builds)도 빌드 명령으로 같은 npm run check 를 돌립니다. 그쪽 Node 는 .ts 를 직접 못 읽는 버전일 수 있어
+# 그런 Node(22.16)에서도 함께 돌려 봅니다 (scripts/lib/source.mjs).
+name: check
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['22.16.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check

@@ -1,0 +1,1093 @@
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./fonts/PretendardVariable.woff2') format('woff2-variations');
+  /* 서브셋이 굵기 축을 이 범위로 잘라 둡니다 (scripts/lib/site-text.mjs) */
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 명조는 영문 표제·숫자·초대의 글에만 쓰므로 그 글자만 담은 서브셋입니다.
+   다른 한글에 var(--serif) 를 쓰려면 scripts/lib/site-text.mjs 의 serifChars 에 더하고 `npm run fonts` 를 다시 돌리세요. */
+@font-face {
+  font-family: 'Gowun Batang';
+  src: url('./fonts/GowunBatang.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================================================
+   디자인 토큰
+   ========================================================= */
+:root {
+  --paper: #f5f0e6;
+  --desk: #e4ded3;
+  --ink: #22262a;
+  --ink-2: #4a5259;
+  --frost: #e3e9ee;
+  --slate-deep: #4f6274;
+
+  /* 지도·계좌·맺음말의 선과 버튼이 함께 쓰는 중성 톤 */
+  --ui-line: #dedbd7;
+  --ui-border: #c8c4bf;
+  --ui-ink: #514c49;
+  --ui-fill: #68625d;
+
+  --sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --serif: 'Gowun Batang', 'Noto Serif KR', 'Nanum Myeongjo', serif;
+
+  --max: 480px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.75;
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--slate-deep);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  transform: translateY(-200%);
+  transition: transform 0.2s;
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* 사진 영역에서만 핀치·더블탭 확대를 막습니다. 본문과 버튼의 브라우저 확대는 그대로 둡니다. */
+[data-photo-no-zoom] {
+  touch-action: pan-x pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- 책 한 권 (모바일에선 전체, 데스크톱에선 가운데 한 권) ---------- */
+.book {
+  max-width: var(--max);
+  margin: 0 auto;
+  background: var(--paper);
+  min-height: 100svh;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 30px 60px -30px rgba(40, 40, 50, 0.25);
+}
+
+/* =========================================================
+   Scene Scroll — 한 화면마다 한 장면처럼 읽히는 초대장
+   ========================================================= */
+.scene {
+  scroll-snap-align: start;
+}
+.page {
+  position: relative;
+}
+
+/* 장면 제목은 모두 같은 크기와 자간의 영문 명조입니다 */
+.scene__title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+}
+
+.scene-rail {
+  position: fixed;
+  z-index: 20;
+  top: 50%;
+  right: max(9px, calc((100vw - var(--max)) / 2 + 9px));
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transform: translateY(-50%);
+}
+.scene-rail__dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(79, 74, 69, 0.56);
+  border-radius: 50%;
+  background: rgba(245, 240, 230, 0.62);
+  transition: height 0.25s var(--ease), border-radius 0.25s var(--ease), background-color 0.25s var(--ease);
+}
+.scene-rail__dot[aria-current='step'] {
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(79, 74, 69, 0.78);
+}
+.scene-rail__dot:focus-visible {
+  outline-offset: 4px;
+}
+
+/* 사진이 있는 장면(.scene--still)은 숨겼다 드러내지 않습니다 — 사진이 도착하는 대로 바로 보입니다. */
+.has-scene-motion .scene:not(.scene--still) > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.85s var(--ease), transform 0.95s var(--ease);
+}
+.has-scene-motion .scene:not(.scene--still).is-visible > * {
+  opacity: 1;
+  transform: none;
+}
+.has-scene-motion .scene:not(.scene--still).is-visible > :nth-child(2) {
+  transition-delay: 0.08s;
+}
+.has-scene-motion .scene:not(.scene--still).is-visible > :nth-child(3) {
+  transition-delay: 0.16s;
+}
+
+/* 모바일에서는 릴스처럼 현재 장면 하나만 화면을 차지합니다.
+   약도·계좌처럼 긴 내용은 다음 장면을 밀어내지 않고 현재 장면 안에서만 스크롤됩니다. */
+@media (max-width: 719px) {
+  html {
+    scroll-snap-type: y mandatory;
+  }
+  .scene {
+    height: 100svh;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-stop: always;
+    scrollbar-width: none;
+  }
+  .scene::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------- 데스크톱 ---------- */
+@media (min-width: 720px) {
+  body {
+    padding: 32px 0;
+  }
+  .book {
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: auto;
+  }
+  .scene:not(.scene--long) {
+    min-height: 860px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* 페이지를 연 뒤에 설정을 바꿔도 내용이 숨은 채 남지 않게 합니다 */
+  .has-scene-motion .scene:not(.scene--still) > * {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* =========================================================
+   1. 표지 — 사진과 글자 전체를 하나의 묶음으로 화면 정중앙에 둡니다
+   ========================================================= */
+.cover {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(28px, env(safe-area-inset-top)) 32px max(28px, env(safe-area-inset-bottom));
+  background: #fbfaf9;
+  color: #343332;
+}
+.cover__main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(28px, 4.5svh, 42px);
+}
+.cover__photo {
+  width: min(66vw, 300px);
+  margin: 0;
+  overflow: hidden;
+  background: #ededeb;
+}
+/* 높이가 사진 비율을 따르므로 잘림·여백 없이 전체가 보입니다 */
+.cover__img,
+.feature__img {
+  width: 100%;
+  object-fit: contain;
+}
+.cover__img {
+  filter: saturate(0.74) contrast(0.95) brightness(1.02);
+}
+.cover__story {
+  width: 100%;
+  text-align: center;
+}
+.cover__names {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  color: #3b3a39;
+  font-family: var(--serif);
+  font-size: clamp(1.03rem, 4.8vw, 1.32rem);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+}
+.cover__and {
+  color: #aaa6a3;
+  font-size: 0.72em;
+  font-style: italic;
+  letter-spacing: 0;
+  text-indent: 0;
+}
+.cover__rule {
+  display: block;
+  width: 44px;
+  height: 1px;
+  margin: 28px auto 0;
+  background: #dedbd8;
+}
+.cover__date {
+  margin: clamp(30px, 4.5svh, 44px) 0 0;
+  color: #777472;
+  font-size: 0.76rem;
+  line-height: 1.7;
+  letter-spacing: 0.12em;
+}
+.cover__venue {
+  margin: 10px 0 0;
+  color: #96918e;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  letter-spacing: 0.08em;
+}
+.cover__foot {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 0;
+  width: 100%;
+}
+.cover__hint {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #aaa6a3;
+  font-size: 0.52rem;
+  letter-spacing: 0.24em;
+  transition: opacity 0.6s;
+}
+/* 자간이 글자 뒤에만 붙으므로 앞에도 같은 만큼 주어 가운데를 맞춥니다 */
+.cover__hint > span:last-child {
+  padding-left: 0.24em;
+}
+.cover__hint.is-hidden {
+  opacity: 0;
+}
+.cover__hint-line {
+  width: 1px;
+  height: 18px;
+  background: linear-gradient(to bottom, transparent, #aaa6a3);
+  animation: hint-drift 2.6s var(--ease) infinite;
+}
+@keyframes hint-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+@media (max-height: 740px) {
+  .cover__hint {
+    display: none;
+  }
+}
+@media (max-height: 700px) {
+  .cover__main {
+    gap: 24px;
+  }
+  .cover__photo {
+    width: min(58vw, 260px);
+  }
+  .cover__date {
+    margin-top: 24px;
+  }
+}
+
+/* =========================================================
+   2. 초대의 글 — 시와 초대 문장이 한 흐름으로 읽히는 한 장
+   ========================================================= */
+.page--invite {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: max(46px, calc(env(safe-area-inset-top) + 34px)) 32px max(42px, calc(env(safe-area-inset-bottom) + 30px));
+  background: #f5f5f4;
+  color: #464340;
+  text-align: center;
+}
+.invite__title {
+  margin-bottom: clamp(38px, 6svh, 56px);
+}
+.invite__copy {
+  max-width: 30em;
+  margin: 0 auto;
+  color: #65615e;
+  font-family: var(--serif);
+  font-size: clamp(0.74rem, 3.15vw, 0.84rem);
+  line-height: 1.86;
+  letter-spacing: -0.01em;
+}
+.invite__copy p {
+  margin: 0;
+}
+.invite__copy p + p {
+  margin-top: 1em;
+}
+.invite__copy span {
+  display: block;
+  overflow-wrap: break-word;
+}
+.invite__source {
+  display: block;
+  margin-top: 18px;
+  color: #908b87;
+  font-size: 0.68rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+.invite__rule {
+  display: block;
+  width: 48px;
+  height: 1px;
+  margin: clamp(28px, 4.5svh, 38px) auto 0;
+  background: #bbb7b3;
+}
+.invite__message {
+  margin: clamp(26px, 4svh, 36px) 0 0;
+  color: #4d4946;
+  font-size: clamp(0.76rem, 3.3vw, 0.88rem);
+  line-height: 1.95;
+  letter-spacing: -0.01em;
+}
+.invite-family {
+  width: 100%;
+  margin: clamp(30px, 4.5svh, 40px) auto 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 13px;
+}
+.invite-family__parents {
+  margin: 0;
+  color: #85807c;
+  font-size: clamp(0.64rem, 2.7vw, 0.74rem);
+  line-height: 1.5;
+}
+.invite-family__name {
+  margin: 8px 0 0;
+  color: #34312f;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.invite-family__heart {
+  color: #bdb8b4;
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1;
+}
+@media (max-height: 700px) {
+  .invite__title {
+    margin-bottom: 24px;
+  }
+  .invite__copy {
+    font-size: 0.7rem;
+    line-height: 1.68;
+  }
+  .invite__source {
+    margin-top: 10px;
+  }
+  .invite__rule {
+    margin-top: 20px;
+  }
+  .invite__message {
+    margin-top: 18px;
+    font-size: 0.72rem;
+    line-height: 1.72;
+  }
+  .invite-family {
+    margin-top: 22px;
+  }
+}
+
+/* =========================================================
+   3. 대표 장면
+   ========================================================= */
+.feature {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 32px;
+  /* 주홍 벽·소파 사진을 받쳐 주는 밝은 웜베이지 */
+  background: #ecd5c3;
+}
+.feature__frame {
+  width: min(72vw, 310px);
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--frost);
+}
+
+/* =========================================================
+   4. 예식일 — 날짜 한 줄, 큰 월 숫자, 달력, D-day
+   ========================================================= */
+.page--info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: max(76px, calc(env(safe-area-inset-top) + 58px)) 30px max(42px, env(safe-area-inset-bottom));
+  background: #fbfaf9;
+  color: #4d4946;
+  text-align: center;
+}
+/* 제목은 위에 고정하고, 나머지 묶음만 남은 높이의 가운데에 둡니다 */
+.info__title {
+  position: absolute;
+  top: max(76px, calc(env(safe-area-inset-top) + 58px));
+  left: 0;
+  width: 100%;
+}
+.info__body {
+  width: 100%;
+  max-width: 366px;
+  margin: 18px auto 0;
+}
+.info__line {
+  margin: 0;
+  color: #5b5652;
+  font-size: clamp(0.84rem, 3.7vw, 0.98rem);
+  line-height: 1.5;
+  letter-spacing: -0.015em;
+}
+.info__schedule {
+  margin-top: clamp(34px, 5svh, 46px);
+}
+.info__month {
+  margin: 0 0 clamp(32px, 4.8svh, 46px);
+  color: #332f2d;
+  font-family: var(--serif);
+  font-size: clamp(4.6rem, 22vw, 6.3rem);
+  line-height: 0.86;
+  letter-spacing: -0.06em;
+}
+.cal {
+  width: 100%;
+  border-spacing: clamp(2px, 1vw, 5px) clamp(7px, 1.5svh, 12px);
+  table-layout: fixed;
+  color: #24211f;
+  font-size: clamp(0.82rem, 3.7vw, 0.98rem);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.cal th {
+  height: 24px;
+  padding: 0 0 clamp(9px, 1.6svh, 14px);
+  color: #312d2a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.cal td {
+  height: clamp(31px, 5.1svh, 39px);
+  padding: 0;
+  color: #393431;
+}
+.cal__mark {
+  display: inline-grid;
+  place-items: center;
+  width: clamp(31px, 9vw, 37px);
+  height: clamp(31px, 9vw, 37px);
+  border-radius: 50%;
+  background: #d9d6d2;
+  color: #2f2b29;
+  font-weight: 500;
+}
+.info__dday-block {
+  margin-top: clamp(24px, 3.8svh, 34px);
+}
+.dday__message {
+  margin: 0;
+  color: #6f6965;
+  font-size: clamp(0.82rem, 3.6vw, 0.94rem);
+  letter-spacing: 0.01em;
+}
+.dday__message b {
+  margin: 0 0.42em;
+  color: #b8b3af;
+  font-family: var(--serif);
+  font-size: 1.12em;
+  font-weight: 400;
+  line-height: 1;
+  vertical-align: 0.02em;
+}
+.dday__message strong {
+  font-weight: 400;
+}
+@media (max-height: 700px) {
+  .info__body {
+    margin-top: 34px;
+  }
+  .info__schedule {
+    margin-top: 24px;
+  }
+  .info__month {
+    margin-bottom: 20px;
+    font-size: 4rem;
+  }
+  .cal {
+    border-spacing: 2px 5px;
+  }
+  .cal th {
+    padding-bottom: 4px;
+  }
+  .cal td {
+    height: 28px;
+  }
+  .info__dday-block {
+    margin-top: 16px;
+  }
+}
+
+/* =========================================================
+   5. 갤러리 — 고른 사진 한 장 + 가로 썸네일 스트립
+   ========================================================= */
+.page--gallery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(76px, calc(env(safe-area-inset-top) + 58px)) 0 max(24px, env(safe-area-inset-bottom));
+  background: #fbfbfa;
+  color: #292929;
+}
+.gallery__title {
+  flex: none;
+}
+.gallery__featured {
+  --photo-height-limit: min(56svh, 500px);
+  width: min(calc(100% - 52px), 338px, calc(var(--photo-height-limit) * var(--photo-ratio)));
+  aspect-ratio: var(--photo-ratio);
+  flex: none;
+  margin: clamp(42px, 6svh, 56px) auto 0;
+  overflow: hidden;
+  background: #ebe8e5;
+  cursor: grab;
+  /* 가로로 쓸면 사진을 넘기므로(main.ts) 세로 스크롤만 브라우저에 맡깁니다 */
+  touch-action: pan-y;
+}
+.gallery__featured:active {
+  cursor: grabbing;
+}
+.gallery__thumbs {
+  width: 100%;
+  /* 세로 공간이 모자라도 스트립은 줄어들지 않습니다 (줄어들면 썸네일 아래가 잘립니다) */
+  flex: none;
+  margin: clamp(26px, 4svh, 36px) 0 0;
+  padding: 0 24px 6px;
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  /* 스냅 기준을 좌우 여백 안쪽으로 옮겨 첫 썸네일이 화면 끝에 붙지 않게 합니다 */
+  scroll-padding-inline: 24px;
+  list-style: none;
+}
+.gallery__thumbs::-webkit-scrollbar {
+  display: none;
+}
+.gallery__thumbs li {
+  flex: none;
+  scroll-snap-align: start;
+}
+.gallery__thumb {
+  position: relative;
+  display: block;
+  width: calc(88px * var(--photo-ratio));
+  height: 88px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  /* 사진 네 모서리까지 보이도록 둥글리지 않습니다 */
+  border-radius: 0;
+  background: #ebe8e5;
+  opacity: 0.46;
+  transition: opacity 0.2s ease;
+}
+.gallery__thumb.is-selected {
+  opacity: 1;
+}
+/* 선택 테두리는 사진 위에 겹쳐 그립니다 */
+.gallery__thumb.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(50, 45, 42, 0.5);
+  pointer-events: none;
+}
+.gallery__thumb:focus-visible {
+  outline: 2px solid #77716d;
+  /* 스트립이 세로로 잘라내므로 링을 버튼 안쪽에 그립니다 */
+  outline-offset: -2px;
+}
+.gallery__featured-img,
+.gallery__thumb-img {
+  width: 100%;
+  height: 100%;
+  /* 프레임이 사진 비율을 따르므로 contain 이어도 안쪽 여백이 없습니다 */
+  object-fit: contain;
+  /* 감상 전용: 드래그 저장과 iOS 길게 누르기 저장 메뉴를 막습니다 */
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+@media (max-height: 700px) {
+  .gallery__featured {
+    --photo-height-limit: min(53svh, 374px);
+    width: min(calc(100% - 64px), 318px, calc(var(--photo-height-limit) * var(--photo-ratio)));
+    margin-top: 28px;
+  }
+  .gallery__thumbs {
+    margin-top: 20px;
+  }
+  .gallery__thumb {
+    width: calc(74px * var(--photo-ratio));
+    height: 74px;
+  }
+}
+
+/* =========================================================
+   6. 오시는 길
+   ========================================================= */
+.page--venue {
+  padding: max(72px, calc(env(safe-area-inset-top) + 52px)) 30px max(44px, env(safe-area-inset-bottom));
+  background: #fbfbfa;
+  color: #292929;
+  text-align: center;
+}
+.venue__head {
+  margin-top: clamp(64px, 10svh, 100px);
+}
+.venue__name {
+  margin: 0;
+  font-size: clamp(1.45rem, 6.5vw, 1.8rem);
+  font-weight: 450;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+.venue__hall {
+  margin: 6px 0 0;
+  color: #575757;
+  font-size: 0.82rem;
+  letter-spacing: 0;
+}
+.venue__addr-main {
+  margin: 6px 0 0;
+  color: #777;
+  font-size: 0.76rem;
+}
+
+/* 지도·계좌·맺음말의 버튼은 같은 선과 글자색을 씁니다 */
+.location__map-links a,
+.gift__tabs button,
+.account__copy,
+.closing__action {
+  border: 1px solid var(--ui-border);
+  background: transparent;
+  color: var(--ui-ink);
+}
+
+.location__map-links {
+  width: min(100%, 286px);
+  margin: clamp(34px, 5svh, 50px) auto 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.location__map-links a {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 550;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+}
+.location__map-links a:focus-visible {
+  outline: 2px solid #777;
+  outline-offset: 3px;
+}
+.location__notice {
+  margin-top: clamp(42px, 6svh, 60px);
+  padding-top: 28px;
+  border-top: 1px solid var(--ui-line);
+  text-align: left;
+}
+.location__notice-title {
+  margin: 0 0 24px;
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.3em;
+}
+.location__notice p:not(.location__notice-title) {
+  margin: 0;
+  color: #555;
+  font-size: 0.78rem;
+  line-height: 1.9;
+}
+/* 안내 항목 사이를 띄워, 줄바꿈된 줄이 다음 항목처럼 읽히지 않게 합니다. 버스 노선표는 바로 위 버스 안내에 붙입니다. */
+.location__notice p + p:not(.location__bus-lines) {
+  margin-top: 18px;
+}
+.location__bus-lines {
+  padding-top: 2px;
+}
+.location__bus-lines span {
+  display: grid;
+  grid-template-columns: 6.6em minmax(0, 1fr);
+  align-items: start;
+}
+.location__bus-lines span + span {
+  margin-top: 4px;
+}
+.location__bus-lines b {
+  color: #292929;
+  font-weight: 600;
+}
+.location__bus-lines em {
+  min-width: 0;
+  font-style: normal;
+}
+@media (max-height: 700px) {
+  .venue__head {
+    margin-top: 42px;
+  }
+  .location__map-links {
+    margin-top: 26px;
+  }
+  .location__notice {
+    margin-top: 30px;
+    padding-top: 20px;
+  }
+  .location__notice p + p:not(.location__bus-lines) {
+    margin-top: 12px;
+  }
+}
+
+/* =========================================================
+   7. 마음 전하실 곳 — 계좌
+   ========================================================= */
+.page--gift {
+  display: flex;
+  flex-direction: column;
+  padding: max(92px, calc(env(safe-area-inset-top) + 70px)) 34px max(18svh, env(safe-area-inset-bottom));
+  background: #fbfbfa;
+  color: #292929;
+  text-align: center;
+}
+.gift__content {
+  width: 100%;
+  max-width: 386px;
+  margin: clamp(78px, 12svh, 112px) auto 0;
+}
+.gift__heading {
+  margin: 0;
+  color: #3f3a37;
+  font-size: 1.3rem;
+  font-weight: 450;
+  line-height: 1.3;
+}
+.gift__message {
+  margin: 8px 0 0;
+  color: #77716d;
+  font-size: 0.82rem;
+}
+.gift__accounts {
+  margin-top: clamp(38px, 6svh, 52px);
+}
+.gift__tabs {
+  width: min(100%, 286px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.gift__tabs button {
+  min-height: 40px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+.gift__tabs button[aria-expanded='true'] {
+  border-color: var(--ui-fill);
+  background: var(--ui-fill);
+  color: #fff;
+}
+/* 계좌가 많아도 장면이 길어지지 않도록 목록 안에서만 스크롤합니다 */
+.gift__panels {
+  max-height: min(47svh, 430px);
+  margin-top: 24px;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  text-align: left;
+}
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 96px;
+  padding: 15px 6px;
+  border-top: 1px solid var(--ui-line);
+}
+.account__body {
+  min-width: 0;
+}
+.account__who,
+.account__num {
+  display: grid;
+  grid-template-columns: 4.6em minmax(0, 1fr);
+  align-items: baseline;
+}
+.account__who {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+.account__num {
+  margin: 7px 0 0;
+  color: #4f4a47;
+  font-size: clamp(0.78rem, 3.3vw, 0.9rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+.account__label,
+.account__bank {
+  color: #918b87;
+  font-size: 0.7rem;
+}
+.account__label {
+  white-space: nowrap;
+}
+.account__name {
+  color: #45403d;
+  font-size: 0.92rem;
+  font-weight: 400;
+}
+.account__details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.account__digits {
+  min-width: 0;
+  font-size: clamp(0.72rem, 3.05vw, 0.86rem);
+  letter-spacing: 0.01em;
+}
+.account__copy {
+  flex: none;
+  min-width: 52px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+@media (max-height: 740px) {
+  .page--gift {
+    padding-top: max(56px, calc(env(safe-area-inset-top) + 42px));
+  }
+}
+/* 폭 320px 대(화면 확대를 켠 폰 포함)에서는 긴 계좌번호가 복사 버튼과 겹치지 않도록 여백을 줄입니다 */
+@media (max-width: 359px) {
+  .page--gift {
+    padding-inline: 20px;
+  }
+  .account__who,
+  .account__num {
+    grid-template-columns: 4em minmax(0, 1fr);
+  }
+}
+@media (max-height: 700px) {
+  .gift__content {
+    margin-top: 42px;
+  }
+  .gift__panels {
+    max-height: 42svh;
+  }
+}
+
+/* =========================================================
+   8. 맺음말 — 위 58% 는 사진, 아래 42% 는 인사와 공유 버튼
+   ========================================================= */
+.page--closing {
+  display: grid;
+  grid-template-rows: minmax(0, 58%) minmax(0, 42%);
+  background: #eeedea;
+  color: #3f3d3a;
+  text-align: center;
+}
+.closing__photo {
+  /* 프레임이 사진 비율(--photo-ratio)을 따라 위 58% 영역 안에 잘림·여백 없이 들어갑니다 */
+  width: min(100%, calc(58svh * var(--photo-ratio)));
+  aspect-ratio: var(--photo-ratio);
+  align-self: center;
+  justify-self: center;
+  margin: 0;
+  overflow: hidden;
+}
+.closing__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: saturate(0.78) contrast(0.94);
+}
+.closing__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 4svh, 38px) 30px max(24px, env(safe-area-inset-bottom));
+}
+.closing__actions {
+  width: min(100%, 286px);
+  margin: clamp(34px, 5svh, 48px) auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.closing__action {
+  min-height: 42px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+@media (max-height: 700px) {
+  .closing__actions {
+    margin-top: 26px;
+  }
+}
+
+/* ---------- 토스트 ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 12px);
+  z-index: 50;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.88rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+*.log
+# 원본 사진(JPG)은 용량이 커서 저장소에 올리지 않습니다
+assets-source/
