@@ -1,0 +1,45 @@
+# GitHub Pages 배포: main 에 푸시하면 검사(npm run check)를 통과한 빌드를 올립니다.
+# 저장소 Settings → Pages → Build and deployment → Source 를 "GitHub Actions" 로 두어야 동작합니다.
+# 프로젝트 사이트(https://<계정>.github.io/<저장소>/)의 하위 경로와 주소는 configure-pages 가 알려 주는 값으로 빌드합니다.
+# 커스텀 도메인을 연결하면 base_path 가 비어 루트(/)로 빌드됩니다. 쓰지 않으면 이 파일을 지우세요.
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/configure-pages@v5
+        id: pages
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          SITE_URL: ${{ steps.pages.outputs.base_url }}/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

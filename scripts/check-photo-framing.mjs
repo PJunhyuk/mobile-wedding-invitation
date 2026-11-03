@@ -6,7 +6,9 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
-import { photos } from '../src/data/wedding.ts';
+import { loadSource } from './lib/source.mjs';
+
+const [{ photos }] = await loadSource('/src/data/wedding.ts');
 
 const url = process.argv[2] ?? PREVIEW_URL;
 const out = process.argv[3];

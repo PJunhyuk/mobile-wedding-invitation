@@ -6,7 +6,11 @@
  */
 import assert from 'node:assert/strict';
 import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
-import { venue } from '../src/data/wedding.ts';
+import { loadSource } from './lib/source.mjs';
+
+/* 지도 버튼의 주소는 데이터로 다시 만들지 않고 화면이 쓰는 모듈(maps.ts)의 값과 맞춥니다 — 장소 ID·카카오 링크가 비어 있어도 같은 규칙 */
+const [{ mapLinks }] = await loadSource('/src/lib/maps.ts');
+const [naverLink, kakaoLink] = mapLinks;
 
 const url = process.argv[2] ?? PREVIEW_URL;
 const browser = await launchChromium();
@@ -58,10 +62,8 @@ try {
     await page.mouse.move(box.x + box.width * 0.15, box.y + box.height / 2, { steps: 5 });
     await page.mouse.up();
     assert.equal(await page.locator('[data-gallery-src]').nth(3).getAttribute('aria-current'), 'true');
-    assert.ok(
-      (await page.locator('[data-naver-map]').getAttribute('href')).endsWith(`/place/${venue.map.naverPlaceId}`),
-    );
-    assert.equal(await page.locator(`a[href="${venue.map.kakao}"]`).getAttribute('target'), '_blank');
+    assert.equal(await page.locator('[data-naver-map]').getAttribute('href'), naverLink.href);
+    assert.equal(await page.locator(`a[href="${kakaoLink.href}"]`).getAttribute('target'), '_blank');
     assert.deepEqual(errors, []);
     console.log(`${width}: 사진 영역만 확대 방지, 누름 전후 크기 동일, 갤러리 선택·쓸기, 지도 링크 통과`);
     await page.close();

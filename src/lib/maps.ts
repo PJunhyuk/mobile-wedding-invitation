@@ -1,4 +1,5 @@
-import { venue, share } from '../data/wedding';
+import { venue } from '../data/wedding';
+import { siteUrl } from './site';
 
 const placeName = encodeURIComponent(venue.name);
 const placeId = venue.map.naverPlaceId;
@@ -26,7 +27,7 @@ export function naverAppUrl(userAgent: string, maxTouchPoints = 0): string | nul
   const query = new URLSearchParams({
     app: 'Y',
     pinType: 'site',
-    appname: new URL(share.url).origin,
+    appname: new URL(siteUrl).origin,
     appMenu: 'location',
     pinId: placeId,
     menu: 'location',

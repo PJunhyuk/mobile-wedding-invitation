@@ -18,6 +18,7 @@
 </p>
 
 스크린샷은 자리표시 이미지와 가상의 이름으로 찍은 것입니다 (`scripts/screenshots.mjs`).
+**데모**: https://pjunhyuk.github.io/mobile-wedding-invitation/ (이 저장소를 그대로 GitHub Pages 에 올린 것)
 
 ## 특징
 
@@ -37,7 +38,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Node 22.16 이상이 필요합니다 (브라우저 검사는 Chromium 이 따로 필요, 아래 참고).
+Node 22.16 이상이 필요합니다 (`package.json` 의 `engines`). 브라우저 검사는 Chromium 이 따로 필요합니다 (아래 참고).
 
 ## 내 정보로 바꾸기
 
@@ -53,7 +54,7 @@ Node 22.16 이상이 필요합니다 (브라우저 검사는 Chromium 이 따로
 3. **글꼴** — 기본 서브셋은 KS X 1001 한글 2,350자를 담고 있어 흔한 이름·문구는 그대로 나옵니다. 드문 한자·옛한글·특수기호를 썼다면 아래 '글꼴' 대로 서브셋을 다시 만드세요. `npm run check` 가 빠진 글자를 알려 줍니다.
 4. **`index.html`** — 방문 집계 스크립트를 넣으려면 끝의 주석 자리에 넣습니다. 계좌번호와 혼주 성함이 있으므로 `robots` 메타와 `public/_headers` 의 `X-Robots-Tag` 는 그대로 두는 것을 권합니다.
 5. **파비콘** — `public/favicon.svg`, `public/apple-touch-icon.png`.
-6. **배포 설정** — `wrangler.jsonc` 의 Worker 이름(Cloudflare 를 쓸 때), `package.json` 의 `name`.
+6. **배포 설정** — 아래 '배포' 를 보고 쓰지 않는 쪽의 파일(`.github/workflows/pages.yml` 또는 `wrangler.jsonc`)은 지웁니다. `package.json` 의 `name` 도 바꿉니다.
 7. `npm run check` 가 통과하면 배포합니다.
 
 ## 명령
@@ -77,10 +78,11 @@ npm run check:live     # 배포된 사이트의 HTML·assets·공유 이미지�
 ### 브라우저 검사
 
 `check:photos`·`check:fonts`·`scripts/screenshots.mjs`·`scripts/measure-images.mjs` 는 `npm run preview` 로 띄운 빌드를 Chromium 으로 엽니다.
-`playwright-core` 는 브라우저를 내려받지 않으므로 실행 파일이 따로 있어야 합니다 (`scripts/lib/browser.mjs`).
+`playwright-core` 는 브라우저를 내려받지 않으므로 실행 파일이 따로 있어야 합니다. `scripts/lib/browser.mjs` 가 `PLAYWRIGHT_CHROME` 환경변수 → `npx playwright install chromium` 으로 받은 Chromium → OS 의 Google Chrome 순으로 찾고, 못 찾으면 찾아본 경로를 알려 줍니다.
 
 ```bash
-PLAYWRIGHT_CHROME=<chrome 경로>   # 기본값: ~/.cache/ms-playwright/chromium-1187
+npx playwright install chromium   # 한 번만. 또는
+PLAYWRIGHT_CHROME=<chrome 경로>   # 설치된 Chrome 을 쓸 때
 PREVIEW_URL=<주소>                # 기본값: http://localhost:4173/
 ```
 
@@ -108,6 +110,7 @@ src/styles.css           디자인 토큰과 섹션 스타일 (장면 순서대�
 src/lib/date.ts          KST 기준 날짜 포맷, 달력 그리드, D-day 문구
 src/lib/maps.ts          네이버·카카오 지도 링크, 네이버지도 앱 열기
 src/lib/dom.ts           html 태그드 템플릿(자동 이스케이프), $/$$, toast, copyText
+src/lib/site.ts          배포 주소(SITE_URL)와 하위 경로(BASE_PATH) 처리
 src/fonts/               Pretendard·Gowun Batang 서브셋 + OFL 고지 (빌드가 해시를 붙임)
 public/images/*.webp     사진 (지금은 자리표시 이미지)
 public/images/thumbs/    갤러리 썸네일 320px (scripts/thumbs.mjs)
@@ -115,10 +118,10 @@ public/og.jpg            공유용 이미지 (scripts/make-og.mjs, 표지와 같
 public/favicon.svg       파비콘 — 눈 내리는 밤. apple-touch-icon.png(180px)는 같은 그림의 iOS 홈 화면용
 public/_headers          보안·캐시 헤더 (Cloudflare·Netlify 형식)
 wrangler.jsonc           Cloudflare Workers 배포 설정 (쓰지 않으면 지워도 됩니다)
+.github/workflows/       check (푸시·PR 마다 npm run check), pages (main 푸시 시 GitHub Pages 배포, 쓰지 않으면 지워도 됩니다)
 scripts/check-*.mjs      검사 스크립트 (content·maps 는 check 에 포함, photo-*·fonts 는 브라우저 검사, live 는 배포 감시)
 scripts/placeholders.mjs 자리표시 이미지 생성
 scripts/lib/source.mjs   검사 스크립트가 .ts 소스를 vite 로 읽는 헬퍼 (Node 버전과 무관하게)
-.github/workflows/       check (푸시마다 npm run check)
 docs/screenshots/        README 용 스크린샷 (scripts/screenshots.mjs)
 ```
 
@@ -130,30 +133,45 @@ docs/screenshots/        README 용 스크린샷 (scripts/screenshots.mjs)
 
 ## 배포
 
-빌드 결과(`dist/`)는 정적 파일이라 어느 호스팅에나 올릴 수 있습니다. 두 가지만 지키면 됩니다.
+빌드 결과(`dist/`)는 정적 파일이라 어느 호스팅에나 올릴 수 있습니다. 배포 위치는 빌드 때 환경변수로 넘기고, 저장소의 `wedding.ts` 는 건드리지 않습니다.
 
-- **없는 주소도 청첩장으로** — 서버가 `/foo/` 같은 경로에도 `index.html` 을 돌려주게 합니다 (SPA fallback). 그래서 자산·사진 경로는 `/` 로 시작하는 절대 경로입니다 (`vite.config.ts` 의 `base: '/'`). 상대 경로로 바꾸면 그런 주소에서 빈 화면이 됩니다 (`check:content` 가 검사).
+| 환경변수 | 뜻 | 기본값 |
+| --- | --- | --- |
+| `SITE_URL` | OG 태그에 들어가는 사이트 주소 (끝에 `/`) | `wedding.ts` 의 `share.url` |
+| `BASE_PATH` | 사이트가 놓이는 하위 경로. GitHub Pages 프로젝트 사이트는 `/<저장소명>/` | `/` |
+
+- **없는 주소도 청첩장으로** — 자산·사진 경로는 `BASE_PATH` 로 시작하는 절대 경로라(`vite.config.ts` 의 `base`, `src/lib/site.ts` 의 `withBase`) 어떤 주소에서 열려도 파일을 찾습니다. 빌드는 `dist/404.html` 도 만들어 두므로 404 페이지를 지원하는 호스팅(GitHub Pages·Netlify)에서는 `/foo/` 같은 주소에서도 청첩장이 뜹니다.
 - **HTTPS** — http:// 로 열리면 공유·복사 API 가 동작하지 않습니다.
+- **검색 차단** — `robots` 메타는 어디서나 붙고, `public/_headers` 의 `X-Robots-Tag` 는 그 파일을 읽는 호스팅(Cloudflare·Netlify)에서만 붙습니다.
 
-### Cloudflare Workers (저장소에 설정이 들어 있음)
+### GitHub Pages (기본, 저장소에 워크플로가 들어 있음)
+
+1. 저장소 **Settings → Pages → Build and deployment → Source** 를 **GitHub Actions** 로 둡니다.
+2. `main` 에 푸시하면 `.github/workflows/pages.yml` 이 `npm run check` 를 통과한 빌드를 `https://<계정>.github.io/<저장소>/` 에 올립니다. 하위 경로와 주소는 `actions/configure-pages` 가 알려 주는 값으로 빌드되므로 따로 적을 것이 없습니다.
+3. 검사에 실패한 커밋은 배포되지 않고 직전 배포가 그대로 남습니다. 결과는 Actions 탭에서 봅니다.
+4. 커스텀 도메인을 붙이면(`Settings → Pages → Custom domain`) 루트(`/`)로 빌드됩니다. *Enforce HTTPS* 를 켜세요.
+
+GitHub Pages 는 응답 헤더를 못 바꾸므로 `public/_headers` 는 무시됩니다 (보안 헤더·캐시 헤더 없음, `X-Robots-Tag` 없음 — `robots` 메타로 충분합니다).
+
+### Cloudflare Workers (`wrangler.jsonc`)
 
 `wrangler.jsonc` 는 스크립트 없이 `dist/` 의 정적 자산만 올리는 Worker 입니다. 정적 자산 요청은 Workers 의 요청 한도에 들어가지 않으므로 공유가 몰려도 한도에 걸리지 않습니다.
 
-1. Cloudflare 대시보드 → Workers & Pages → 저장소 연결 (Workers Builds).
+1. Cloudflare 대시보드 → Workers & Pages → 저장소 연결 (Workers Builds). `wrangler.jsonc` 의 `name` 을 대시보드의 Worker 이름과 맞춥니다.
 2. **Build command 를 `npm run check`** 로, Deploy command 를 `npx wrangler deploy` 로 둡니다. 검사에 실패한 커밋은 배포되지 않고 직전 배포가 그대로 남습니다.
-3. 도메인을 연결하고 SSL/TLS → Edge Certificates → *Always Use HTTPS* 를 켭니다.
+3. 도메인을 연결하고 SSL/TLS → Edge Certificates → *Always Use HTTPS* 를 켭니다. `wedding.ts` 의 `share.url` 과 다른 주소에 올린다면 빌드 변수에 `SITE_URL` 을 넣습니다.
 4. `wrangler` 는 `package.json` 에 정확한 버전으로 고정되어 있어 Cloudflare 가 새 릴리스를 내도 배포 방식이 바뀌지 않습니다. 올릴 때는 `npm i -D -E wrangler@<버전>` 후 `npx wrangler deploy --dry-run` 이 통과하는지 보고 푸시합니다.
 
-빌드 명령에 들어가는 스크립트는 `.ts` 를 직접 import 하지 않고 `scripts/lib/source.mjs` 의 `loadSource` 로 읽습니다 — 빌드 환경의 Node 가 `.ts` 를 못 읽는 버전(22.18 미만)이어도 빌드가 서지 않게 하기 위해서이고, GitHub Actions(`check`)가 Node 22.16 에서도 돌려 확인합니다.
+빌드 명령에 들어가는 스크립트는 `.ts` 를 직접 import 하지 않고 `scripts/lib/source.mjs` 의 `loadSource` 로 읽습니다 — 빌드 환경의 Node 가 `.ts` 를 못 읽는 버전(22.18 미만)이어도 서지 않게 하기 위해서이고, GitHub Actions(`check`)가 Node 22.16 에서도 돌려 확인합니다.
 
 ### 다른 정적 호스팅
 
-Netlify·Vercel·GitHub Pages 등에 `dist/` 를 올립니다. `public/_headers` 는 Netlify 도 같은 형식으로 읽습니다. SPA fallback 설정은 호스팅별 문서를 보세요.
+Netlify·Vercel 등에 `dist/` 를 올립니다. `public/_headers` 는 Netlify 도 같은 형식으로 읽습니다. 하위 경로에 올린다면 `BASE_PATH` 를, 주소가 `share.url` 과 다르면 `SITE_URL` 을 빌드 변수로 넣습니다.
 
 ### 예식 전 운영 메모
 
-- 예식 전에는 꼭 필요한 변경만 푸시합니다. 잘못 올라갔으면 호스팅의 이전 배포로 Rollback 하는 것이 가장 빠릅니다. 배포한 커밋에는 `deploy-YYYYMMDD` 같은 태그를 붙여 두면 찾기 쉽습니다.
-- **살아 있는지 감시** — `node scripts/check-live.mjs <url>` 이 HTML·CSS·JS·글꼴·공유 이미지가 실제로 오는지, `EXPECTED_SHA` 를 주면 그 커밋이 배포되었는지(페이지 소스의 `<meta name="build">`) 확인합니다. GitHub Actions 로 매시간 돌리려면 아래 워크플로를 `.github/workflows/live.yml` 로 추가하세요 (실패하면 GitHub 이 메일을 보냅니다). 더 촘촘히 보려면 UptimeRobot 같은 무료 모니터에 5분 간격으로 등록하세요.
+- 예식 전에는 꼭 필요한 변경만 푸시합니다. 잘못 올라갔으면 호스팅의 이전 배포로 Rollback 하는 것이 가장 빠릅니다 (GitHub Pages 는 Actions 에서 이전 성공 실행을 *Re-run* 하면 됩니다). 배포한 커밋에는 `deploy-YYYYMMDD` 같은 태그를 붙여 두면 찾기 쉽습니다.
+- **살아 있는지 감시** — `node scripts/check-live.mjs <url>` 이 HTML·CSS·JS·글꼴·공유 이미지가 실제로 오는지, `EXPECTED_SHA` 를 주면 그 커밋이 배포되었는지(페이지 소스의 `<meta name="build">`) 확인합니다. GitHub Actions 로 매시간 돌리려면 아래 워크플로를 `.github/workflows/live.yml` 로 추가하세요 (실패하면 GitHub 이 메일을 보냅니다). **`wedding.ts` 의 `share.url` 을 배포 주소로 바꾼 뒤에 추가하세요** — 자리표시자(example.com) 그대로면 스크립트가 바로 실패하고 매시간 메일이 옵니다. 더 촘촘히 보려면 UptimeRobot 같은 무료 모니터에 5분 간격으로 등록하세요.
   ```yaml
   name: live
   on:
@@ -166,6 +184,7 @@ Netlify·Vercel·GitHub Pages 등에 `dist/` 를 올립니다. `public/_headers`
         - uses: actions/checkout@v4
         - uses: actions/setup-node@v4
           with: { node-version: 24 }
+        - run: npm ci
         - run: node scripts/check-live.mjs
           env: { EXPECTED_SHA: '${{ github.sha }}' }
   ```

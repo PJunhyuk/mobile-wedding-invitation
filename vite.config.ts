@@ -1,6 +1,16 @@
 import { execFileSync } from 'node:child_process';
+import { copyFile } from 'node:fs/promises';
 import { defineConfig, type Plugin } from 'vite';
 import { share, photos } from './src/data/wedding.ts';
+
+/**
+ * 배포 위치는 환경변수로 넘깁니다 (저장소의 wedding.ts 는 그대로 두고 데모·미리보기만 다른 곳에 올릴 수 있게).
+ *  - BASE_PATH: 사이트가 놓이는 하위 경로. 기본 '/'. GitHub Pages 프로젝트 사이트는 '/<저장소명>/'.
+ *  - SITE_URL : OG 태그와 공유 링크에 쓰는 전체 주소 (끝에 / 포함). 기본은 wedding.ts 의 share.url.
+ */
+const base = `/${(process.env.BASE_PATH ?? '/').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
+const siteEnv = (process.env.SITE_URL ?? '').trim();
+const siteUrl = siteEnv ? siteEnv.replace(/\/?$/, '/') : share.url;
 
 /**
  * index.html 의 {{key}} 토큰을 src/data/wedding.ts 값으로 치환하고,
@@ -12,8 +22,9 @@ function htmlData(build: string): Plugin {
   const map: Record<string, string> = {
     'share.title': share.title,
     'share.description': share.description,
-    'share.url': share.url,
-    'share.ogImage': new URL(share.ogImage, share.url).toString(),
+    'share.url': siteUrl,
+    /* ogImage 는 사이트 주소 기준 상대 경로로 풉니다 — 하위 경로 배포에서도 /og.jpg 가 사이트 안을 가리키게 */
+    'share.ogImage': new URL(share.ogImage.replace(/^\//, ''), siteUrl).toString(),
   };
   return {
     name: 'html-data',
@@ -29,7 +40,7 @@ function htmlData(build: string): Plugin {
         tags: [
           {
             tag: 'link',
-            attrs: { rel: 'preload', as: 'image', href: photos.cover.src, fetchpriority: 'high' },
+            attrs: { rel: 'preload', as: 'image', href: base + photos.cover.src.replace(/^\//, ''), fetchpriority: 'high' },
             injectTo: 'head' as const,
           },
           /* 배포본이 어느 커밋인지 밖에서 알 수 있게 합니다. 빌드가 실패하면 사이트는 직전 배포로 남아
@@ -54,11 +65,24 @@ function buildCommit(): string {
   }
 }
 
+/**
+ * 없는 주소에 대한 대체 페이지. GitHub Pages 는 404.html 을, Netlify 는 404.html 을 404 페이지로 씁니다.
+ * (Cloudflare Workers 는 wrangler.jsonc 의 not_found_handling 이 같은 일을 하므로 이 파일을 쓰지 않습니다.)
+ * 자산 경로가 절대 경로라 어떤 주소에서 열려도 CSS·JS·사진을 찾습니다.
+ */
+const notFoundPage = (): Plugin => ({
+  name: 'not-found-page',
+  apply: 'build',
+  closeBundle: () => copyFile('dist/index.html', 'dist/404.html'),
+});
+
 export default defineConfig({
-  /* 서버가 모르는 주소(/foo/ 등)에도 이 페이지를 돌려주므로(wrangler.jsonc), 자산은 상대 경로가 아니라 도메인 루트에서 찾게 합니다.
+  /* 서버가 모르는 주소(/foo/ 등)에도 이 페이지를 돌려주므로, 자산은 상대 경로가 아니라 사이트 루트(base)에서 찾게 합니다.
      상대 경로면 그런 주소에서 CSS·JS 를 못 찾아 빈 화면이 됩니다. */
-  base: '/',
-  plugins: [htmlData(buildCommit())],
+  base,
+  /* SITE_URL 을 소스(src/lib/site.ts)에서도 읽을 수 있게 노출합니다 */
+  envPrefix: ['VITE_', 'SITE_'],
+  plugins: [htmlData(buildCommit()), notFoundPage()],
   build: {
     target: 'es2020',
     cssTarget: 'safari14',

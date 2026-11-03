@@ -1,6 +1,6 @@
 /**
  * public/images/*.webp → public/images/thumbs/*.webp 썸네일 생성 스크립트.
- * 갤러리 가로 스트립(66 CSS px)이 이 썸네일을 씁니다.
+ * 갤러리 가로 썸네일 스트립(높이 88 CSS px, 3:4 사진이면 폭 66px)이 이 썸네일을 씁니다.
  * 사진을 추가·교체하면 `node scripts/thumbs.mjs` 를 다시 실행하세요.
  */
 import { readdir, mkdir } from 'node:fs/promises';
@@ -9,7 +9,7 @@ import sharp from 'sharp';
 
 const SRC = 'public/images';
 const OUT = 'public/images/thumbs';
-const WIDTH = 320; // 스트립 66 CSS px 의 4배까지 커버. 큰 사진은 원본을 씁니다
+const WIDTH = 320; // 스트립 썸네일 폭(3:4 기준 66 CSS px)의 4배까지 커버. 큰 사진은 원본을 씁니다
 
 await mkdir(OUT, { recursive: true });
 const files = (await readdir(SRC, { withFileTypes: true }))

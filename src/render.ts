@@ -14,6 +14,7 @@ import {
 } from './data/wedding';
 import { when, dateLine, timeLine, monthGrid, ddayPhrase } from './lib/date';
 import { mapLinks } from './lib/maps';
+import { withBase } from './lib/site';
 
 const hasParents = (p: Person) => p.parents.father.trim() !== '' || p.parents.mother.trim() !== '';
 
@@ -28,7 +29,7 @@ const picture = (
 ) =>
   html`<img
     class="${extra.className ?? ''}"
-    src="${extra.thumb ? p.thumb : p.src}"
+    src="${withBase(extra.thumb ? p.thumb : p.src)}"
     alt="${p.alt}"
     width="${p.width}" height="${p.height}"
     loading="${extra.loading ?? (extra.thumb ? 'lazy' : 'eager')}"
@@ -111,7 +112,7 @@ const invite = () => html`
   </section>
 `;
 
-/* ---------- 3. 대표 장면 (서리) ---------- */
+/* ---------- 3. 대표 장면 ---------- */
 const feature = () => html`
   <section class="feature scene scene--still" id="feature" aria-labelledby="feature-title" data-scene>
     <h2 class="visually-hidden" id="feature-title">대표 사진</h2>
@@ -207,7 +208,7 @@ const gallery = () => {
                 style="${ratioStyle(p)}"
                 data-gallery-width="${p.width}"
                 data-gallery-height="${p.height}"
-                data-gallery-src="${p.src}"
+                data-gallery-src="${withBase(p.src)}"
                 data-gallery-alt="${p.alt}"
                 aria-label="${p.alt}"
                 aria-current="${String(first)}"

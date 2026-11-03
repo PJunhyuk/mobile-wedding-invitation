@@ -506,7 +506,7 @@ button {
   flex-direction: column;
   justify-content: center;
   padding: 64px 32px;
-  /* 주홍 벽·소파 사진을 받쳐 주는 밝은 웜베이지 */
+  /* 대표 사진을 받쳐 주는 밝은 웜베이지 — 사진의 톤에 맞춰 바꾸세요 */
   background: #ecd5c3;
 }
 .feature__frame {

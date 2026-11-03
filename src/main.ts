@@ -256,7 +256,7 @@ const naverMapLink = $<HTMLAnchorElement>('[data-naver-map]');
 if (naverMapLink) bindNaverMap(naverMapLink);
 
 /* ---- 공유 ---- */
-/* 밖으로 나가는 주소는 쿼리·해시 없이 깔끔하게 보냅니다(예전 공유 링크의 ?share=… 로 들어온 경우 포함).
+/* 밖으로 나가는 주소는 쿼리·해시 없이 깔끔하게 보냅니다(추적용 쿼리가 붙은 채 들어온 경우 포함).
    복사한 링크도 결국 카카오톡에 붙여 넣게 되므로 공유하기와 같은 주소를 씁니다. */
 const shareUrl = () => {
   const url = new URL(window.location.href);
