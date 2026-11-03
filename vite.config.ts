@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFile } from 'node:fs/promises';
-import { defineConfig, type Plugin } from 'vite';
+import path from 'node:path';
+import { defineConfig, type Plugin, type ResolvedConfig } from 'vite';
 import { share, photos } from './src/data/wedding.ts';
 
 /**
@@ -70,18 +71,24 @@ function buildCommit(): string {
  * (Cloudflare Workers 는 wrangler.jsonc 의 not_found_handling 이 같은 일을 하므로 이 파일을 쓰지 않습니다.)
  * 자산 경로가 절대 경로라 어떤 주소에서 열려도 CSS·JS·사진을 찾습니다.
  */
-const notFoundPage = (): Plugin => ({
-  name: 'not-found-page',
-  apply: 'build',
-  closeBundle: () => copyFile('dist/index.html', 'dist/404.html'),
-});
+const notFoundPage = (): Plugin => {
+  let outDir = '';
+  return {
+    name: 'not-found-page',
+    apply: 'build',
+    configResolved: (config: ResolvedConfig) => {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle: () => copyFile(path.join(outDir, 'index.html'), path.join(outDir, '404.html')),
+  };
+};
 
 export default defineConfig({
   /* 서버가 모르는 주소(/foo/ 등)에도 이 페이지를 돌려주므로, 자산은 상대 경로가 아니라 사이트 루트(base)에서 찾게 합니다.
      상대 경로면 그런 주소에서 CSS·JS 를 못 찾아 빈 화면이 됩니다. */
   base,
-  /* SITE_URL 을 소스(src/lib/site.ts)에서도 읽을 수 있게 노출합니다 */
-  envPrefix: ['VITE_', 'SITE_'],
+  /* 정규화한 사이트 주소를 소스(src/lib/site.ts)에도 같은 값으로 넘깁니다 — 여기 한 곳에서만 계산합니다 */
+  define: { 'import.meta.env.SITE_URL': JSON.stringify(siteUrl) },
   plugins: [htmlData(buildCommit()), notFoundPage()],
   build: {
     target: 'es2020',

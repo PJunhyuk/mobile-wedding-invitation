@@ -63,7 +63,9 @@ if (page) {
   }
 
   /* HTML 이 실제로 가리키는 파일들 — 해시가 붙은 이름이라 이 목록이 곧 현재 배포본입니다 */
-  const assets = [...html.matchAll(/(?:href|src)="([^"]*\/assets\/[^"]+)"/g)].map((m) => m[1]);
+  /* 이 사이트의 하위 경로로 시작하는 것만 — 외부 스크립트 주소에 /assets/ 가 들어 있어도 섞이지 않게 */
+  const escaped = base.pathname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const assets = [...html.matchAll(new RegExp(`(?:href|src)="(${escaped}assets/[^"]+)"`, 'g'))].map((m) => m[1]);
   if (assets.length < 4) problems.push(`HTML 이 가리키는 assets 가 ${assets.length}개뿐입니다 (CSS·JS·글꼴 2개가 있어야 합니다)`);
   /* 공유 이미지와 표지 사진도 HTML 이 실제로 가리키는 주소로 봅니다 (하위 경로 배포에서도 맞습니다) */
   const ogImage = html.match(/property="og:image" content="([^"]+)"/)?.[1];

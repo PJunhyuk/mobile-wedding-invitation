@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** 빌드 때 넘긴 사이트 주소 (vite.config.ts 의 envPrefix 로 노출). 없으면 wedding.ts 의 share.url 을 씁니다. */
+  /** vite.config.ts 가 define 으로 넣는 정규화된 사이트 주소 (빌드 환경변수 SITE_URL, 없으면 wedding.ts 의 share.url) */
   readonly SITE_URL?: string;
 }

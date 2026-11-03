@@ -137,7 +137,7 @@ docs/screenshots/        README 용 스크린샷 (scripts/screenshots.mjs)
 
 | 환경변수 | 뜻 | 기본값 |
 | --- | --- | --- |
-| `SITE_URL` | OG 태그에 들어가는 사이트 주소 (끝에 `/`) | `wedding.ts` 의 `share.url` |
+| `SITE_URL` | OG 태그에 들어가는 사이트 주소 (끝의 `/` 는 없어도 붙여 줍니다) | `wedding.ts` 의 `share.url` |
 | `BASE_PATH` | 사이트가 놓이는 하위 경로. GitHub Pages 프로젝트 사이트는 `/<저장소명>/` | `/` |
 
 - **없는 주소도 청첩장으로** — 자산·사진 경로는 `BASE_PATH` 로 시작하는 절대 경로라(`vite.config.ts` 의 `base`, `src/lib/site.ts` 의 `withBase`) 어떤 주소에서 열려도 파일을 찾습니다. 빌드는 `dist/404.html` 도 만들어 두므로 404 페이지를 지원하는 호스팅(GitHub Pages·Netlify)에서는 `/foo/` 같은 주소에서도 청첩장이 뜹니다.

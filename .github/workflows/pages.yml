@@ -11,9 +11,10 @@ permissions:
   contents: read
   pages: write
   id-token: write
+# 진행 중인 배포는 취소하지 않습니다 — 반쯤 올라간 채 끊기지 않게 (GitHub 의 Pages 템플릿과 같은 설정)
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,8 +27,8 @@ jobs:
       - uses: actions/configure-pages@v5
         id: pages
       - run: npm ci
+      # check 의 마지막 단계가 빌드이므로, 배포 위치를 환경변수로 주면 그 결과(dist/)를 그대로 올립니다
       - run: npm run check
-      - run: npm run build
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
           SITE_URL: ${{ steps.pages.outputs.base_url }}/

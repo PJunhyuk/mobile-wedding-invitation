@@ -32,6 +32,10 @@ const bundled = (() => {
   }
 })();
 
+/* 직접 지정한 경로가 틀렸으면 다른 브라우저로 조용히 넘어가지 않고 멈춥니다 */
+if (process.env.PLAYWRIGHT_CHROME && !existsSync(process.env.PLAYWRIGHT_CHROME)) {
+  throw new Error(`PLAYWRIGHT_CHROME=${process.env.PLAYWRIGHT_CHROME} 에 실행 파일이 없습니다`);
+}
 const candidates = [process.env.PLAYWRIGHT_CHROME, bundled, ...systemChrome].filter(Boolean);
 const executablePath = candidates.find((p) => existsSync(p));
 if (!executablePath) {
