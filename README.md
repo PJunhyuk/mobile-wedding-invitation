@@ -111,6 +111,7 @@ src/lib/date.ts          KST 기준 날짜 포맷, 달력 그리드, D-day 문�
 src/lib/maps.ts          네이버·카카오 지도 링크, 네이버지도 앱 열기
 src/lib/dom.ts           html 태그드 템플릿(자동 이스케이프), $/$$, toast, copyText
 src/lib/site.ts          배포 주소(SITE_URL)와 하위 경로(BASE_PATH) 처리
+src/lib/paths.ts         사진 경로 규칙 (URL·디스크 경로) — 빌드 설정과 스크립트가 함께 씀
 src/fonts/               Pretendard·Gowun Batang 서브셋 + OFL 고지 (빌드가 해시를 붙임)
 public/images/*.webp     사진 (지금은 자리표시 이미지)
 public/images/thumbs/    갤러리 썸네일 320px (scripts/thumbs.mjs)
@@ -118,7 +119,7 @@ public/og.jpg            공유용 이미지 (scripts/make-og.mjs, 표지와 같
 public/favicon.svg       파비콘 — 눈 내리는 밤. apple-touch-icon.png(180px)는 같은 그림의 iOS 홈 화면용
 public/_headers          보안·캐시 헤더 (Cloudflare·Netlify 형식)
 wrangler.jsonc           Cloudflare Workers 배포 설정 (쓰지 않으면 지워도 됩니다)
-.github/workflows/       check (푸시·PR 마다 npm run check), pages (main 푸시 시 GitHub Pages 배포, 쓰지 않으면 지워도 됩니다)
+.github/workflows/       check (main 푸시·PR 마다 npm run check), pages (main 푸시 시 GitHub Pages 배포, 쓰지 않으면 지워도 됩니다)
 scripts/check-*.mjs      검사 스크립트 (content·maps 는 check 에 포함, photo-*·fonts 는 브라우저 검사, live 는 배포 감시)
 scripts/placeholders.mjs 자리표시 이미지 생성
 scripts/lib/source.mjs   검사 스크립트가 .ts 소스를 vite 로 읽는 헬퍼 (Node 버전과 무관하게)
@@ -140,7 +141,7 @@ docs/screenshots/        README 용 스크린샷 (scripts/screenshots.mjs)
 | `SITE_URL` | OG 태그에 들어가는 사이트 주소 (끝의 `/` 는 없어도 붙여 줍니다) | `wedding.ts` 의 `share.url` |
 | `BASE_PATH` | 사이트가 놓이는 하위 경로. GitHub Pages 프로젝트 사이트는 `/<저장소명>/` | `/` |
 
-- **없는 주소도 청첩장으로** — 자산·사진 경로는 `BASE_PATH` 로 시작하는 절대 경로라(`vite.config.ts` 의 `base`, `src/lib/site.ts` 의 `withBase`) 어떤 주소에서 열려도 파일을 찾습니다. 빌드는 `dist/404.html` 도 만들어 두므로 404 페이지를 지원하는 호스팅(GitHub Pages·Netlify)에서는 `/foo/` 같은 주소에서도 청첩장이 뜹니다.
+- **없는 주소도 청첩장으로** — 자산·사진 경로는 `BASE_PATH` 로 시작하는 절대 경로라(`vite.config.ts` 의 `base`, `src/lib/paths.ts`) 어떤 주소에서 열려도 파일을 찾습니다. 빌드는 `dist/404.html` 도 만들어 두므로 404 페이지를 지원하는 호스팅(GitHub Pages·Netlify)에서는 `/foo/` 같은 주소에서도 청첩장이 뜹니다.
 - **HTTPS** — http:// 로 열리면 공유·복사 API 가 동작하지 않습니다.
 - **검색 차단** — `robots` 메타는 어디서나 붙고, `public/_headers` 의 `X-Robots-Tag` 는 그 파일을 읽는 호스팅(Cloudflare·Netlify)에서만 붙습니다.
 

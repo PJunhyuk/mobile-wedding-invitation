@@ -1,10 +1,15 @@
-# 푸시마다 npm run check (타입·린트·글꼴 커버리지·지도 링크·빌드). 실패하면 GitHub 이 메일로 알립니다.
-# Cloudflare(Workers Builds)도 빌드 명령으로 같은 npm run check 를 돌립니다. 그쪽 Node 는 .ts 를 직접 못 읽는 버전일 수 있어
-# 그런 Node(22.16)에서도 함께 돌려 봅니다 (scripts/lib/source.mjs).
+# main 푸시와 PR 마다 npm run check (타입·린트·글꼴 커버리지·지도 링크·빌드). 실패하면 GitHub 이 메일로 알립니다.
+# Cloudflare(Workers Builds)·GitHub Pages(pages.yml)도 배포 전에 같은 npm run check 를 돌립니다. 그쪽 Node 는 .ts 를 직접 못 읽는
+# 버전일 수 있어 그런 Node(22.16)에서도 함께 돌려 봅니다 (scripts/lib/source.mjs).
 name: check
 on:
   push:
+    branches: [main]
   pull_request:
+# 같은 브랜치에 연달아 푸시하면 앞선 검사는 취소합니다
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest

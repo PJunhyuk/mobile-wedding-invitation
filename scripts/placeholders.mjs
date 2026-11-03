@@ -10,9 +10,10 @@ import path from 'node:path';
 import sharp from 'sharp';
 import * as fontkit from 'fontkit';
 import { loadSource } from './lib/source.mjs';
+import { FONT_FILES } from './lib/site-text.mjs';
 
 const OUT = 'public/images';
-const font = fontkit.openSync('src/fonts/GowunBatang.woff2');
+const font = fontkit.openSync(FONT_FILES.find((f) => f.serifOnly).out);
 
 /* 사이트의 색 — styles.css 의 종이색·먹색 계열 */
 const PALETTES = [
@@ -58,20 +59,22 @@ function svg({ width, height, label, index }) {
 </svg>`;
 }
 
-const [{ photos }] = await loadSource('/src/data/wedding.ts');
-const targets = [
-  { photo: photos.cover, label: 'COVER' },
-  { photo: photos.feature, label: 'FEATURE' },
-  ...photos.gallery.map((photo, i) => ({ photo, label: `GALLERY ${String(i + 1).padStart(2, '0')}` })),
-  { photo: photos.closing, label: 'CLOSING' },
-].filter(({ photo }) => path.basename(photo.src).startsWith('placeholder-'));
+const [{ photos }, { publicFile }] = await loadSource('/src/data/wedding.ts', '/src/lib/paths.ts');
+/* 라벨은 photos 의 키에서 — 사진 자리를 더해도 이 스크립트는 그대로입니다 */
+const targets = Object.entries(photos)
+  .flatMap(([role, value]) =>
+    Array.isArray(value)
+      ? value.map((photo, i) => ({ photo, label: `${role.toUpperCase()} ${String(i + 1).padStart(2, '0')}` }))
+      : [{ photo: value, label: role.toUpperCase() }],
+  )
+  .filter(({ photo }) => path.basename(photo.src).startsWith('placeholder-'));
 
 await mkdir(OUT, { recursive: true });
 await Promise.all(
   targets.map(({ photo, label }, index) =>
     sharp(Buffer.from(svg({ width: photo.width, height: photo.height, label, index })))
       .webp({ quality: 80 })
-      .toFile(path.join('public', photo.src)),
+      .toFile(publicFile(photo.src)),
   ),
 );
 console.log(`generated ${targets.length} placeholder images in ${OUT}`);

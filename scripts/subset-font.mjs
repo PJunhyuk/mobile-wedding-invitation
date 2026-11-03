@@ -34,8 +34,7 @@ if (fonts.some((f) => !f.src)) {
    화면만 보고는 알아채기 어렵습니다. 원본의 글꼴 이름으로 먼저 확인합니다. */
 for (const font of fonts) {
   const family = fontkit.openSync(font.src).familyName ?? '';
-  const expected = font.name.split(' ')[0];
-  if (!family.replace(/\s/g, '').toLowerCase().includes(expected.toLowerCase())) {
+  if (!family.startsWith(font.family)) {
     console.error(`인자 순서를 확인하세요: ${font.src} 의 글꼴 이름은 '${family}' 인데 ${font.name} 자리에 있습니다.`);
     process.exit(1);
   }

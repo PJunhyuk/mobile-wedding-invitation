@@ -4,12 +4,12 @@
  * 실기기 측정이 아니고, warm 결과는 서버의 캐시 헤더에 따라 달라집니다.
  * 사용: node scripts/measure-images.mjs [url]
  */
-import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
+import { launchChromium, targetUrl, DEFAULT_PHONE } from './lib/browser.mjs';
 
-const url = process.argv[2] ?? PREVIEW_URL;
+const url = targetUrl();
 const browser = await launchChromium();
 const context = await browser.newContext({
-  viewport: { width: 375, height: 812 },
+  viewport: DEFAULT_PHONE,
   deviceScaleFactor: 2,
   isMobile: true,
   hasTouch: true,

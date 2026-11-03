@@ -5,12 +5,12 @@
  */
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
+import { launchChromium, targetUrl, PHONES } from './lib/browser.mjs';
 import { loadSource } from './lib/source.mjs';
 
 const [{ photos }] = await loadSource('/src/data/wedding.ts');
 
-const url = process.argv[2] ?? PREVIEW_URL;
+const url = targetUrl();
 const out = process.argv[3];
 if (out) await mkdir(out, { recursive: true });
 
@@ -34,11 +34,7 @@ const FULL = { fit: 'contain', radius: '0px', loaded: true, snug: true, ratio: t
 
 const browser = await launchChromium();
 try {
-  for (const [width, height] of [
-    [320, 660],
-    [375, 812],
-    [430, 932],
-  ]) {
+  for (const [width, height] of PHONES) {
     const page = await browser.newPage({
       viewport: { width, height },
       deviceScaleFactor: 2,

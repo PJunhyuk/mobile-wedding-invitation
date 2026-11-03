@@ -1,13 +1,9 @@
 // 주요 장면 스크린샷 (320·375·430 폭). 사용: npm run preview 실행 후 node scripts/screenshots.mjs <outdir> <tag> [reduce]
-import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
+import { launchChromium, PREVIEW_URL, PHONES } from './lib/browser.mjs';
 import path from 'node:path';
 const [out, tag, reduced] = process.argv.slice(2);
 const browser = await launchChromium(['--disable-gpu']);
-for (const [w, h] of [
-  [320, 660],
-  [375, 812],
-  [430, 932],
-]) {
+for (const [w, h] of PHONES) {
   const ctx = await browser.newContext({
     viewport: { width: w, height: h },
     deviceScaleFactor: 2,
@@ -28,18 +24,22 @@ for (const [w, h] of [
     await page.waitForTimeout(120);
   }
   await page.waitForTimeout(1500);
-  for (const id of ['invitation', 'info', 'gallery', 'location', 'gift']) {
-    const ok = await page.evaluate((id) => {
-      document.documentElement.style.scrollBehavior = 'auto';
-      const el = document.getElementById(id);
-      if (!el) return false;
-      el.scrollIntoView();
-      return true;
-    }, id);
-    if (!ok) continue;
+  /* 요소를 화면에 맞춰 스크롤한 뒤 찍습니다 (없는 요소는 건너뜀) */
+  const shoot = async (name, selector, block = 'start') => {
+    const ok = await page.evaluate(
+      ([selector, block]) => {
+        const el = document.querySelector(selector);
+        if (!el) return false;
+        el.scrollIntoView({ block, behavior: 'instant' });
+        return true;
+      },
+      [selector, block],
+    );
+    if (!ok) return;
     await page.waitForTimeout(300);
-    await page.screenshot({ path: path.join(out, `${tag}-${w}-${id}.png`) });
-  }
+    await page.screenshot({ path: path.join(out, `${tag}-${w}-${name}.png`) });
+  };
+  for (const id of ['invitation', 'info', 'gallery', 'location', 'gift']) await shoot(id, `#${id}`);
   // 계좌 패널은 접힌 채 렌더링되므로 첫 탭을 열어 두고 찍습니다
   await page.click('[data-action="gift-tab"]').catch(() => {});
   await page.waitForTimeout(200);
@@ -49,15 +49,7 @@ for (const [w, h] of [
     ['map', '.location__map-links'],
     ['accounts', '.gift__accounts'],
   ]) {
-    const ok = await page.evaluate((sel) => {
-      const el = document.querySelector(sel);
-      if (!el) return false;
-      el.scrollIntoView({ block: 'center', behavior: 'instant' });
-      return true;
-    }, sel);
-    if (!ok) continue;
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: path.join(out, `${tag}-${w}-${name}.png`) });
+    await shoot(name, sel, 'center');
   }
   // 두 번째 썸네일을 눌러 대표 사진이 바뀐 상태
   const swapped = await page

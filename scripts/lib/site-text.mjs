@@ -25,8 +25,9 @@ const EXTRA = SCREEN_SYMBOLS + SPARE_SYMBOLS;
  *  - Gowun Batang: 명조로 조판되는 글자만 (영문 표제·숫자·기호 + 초대의 글). 나머지 한글은 명조로 그려지지 않으므로 넣지 않습니다.
  */
 export const FONT_FILES = [
-  { name: 'Pretendard Variable', out: 'src/fonts/PretendardVariable.woff2', serifOnly: false, axes: { wght: { min: 400, max: 700 } } },
-  { name: 'Gowun Batang', out: 'src/fonts/GowunBatang.woff2', serifOnly: true },
+  /* name: 원본 글꼴 파일의 이름, family: styles.css 의 @font-face 이름 */
+  { name: 'Pretendard Variable', family: 'Pretendard', out: 'src/fonts/PretendardVariable.woff2', serifOnly: false, axes: { wght: { min: 400, max: 700 } } },
+  { name: 'Gowun Batang', family: 'Gowun Batang', out: 'src/fonts/GowunBatang.woff2', serifOnly: true },
 ];
 
 /** 요일 이름은 src/lib/date.ts 의 Intl 이 실행 중에 만들어 소스에 글자로 남지 않으므로 여기서 직접 넣습니다. */

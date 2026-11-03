@@ -5,14 +5,14 @@
  * 사용: npm run preview 실행 후 node scripts/check-fonts.mjs [url]
  */
 import * as fontkit from 'fontkit';
-import { launchChromium, PREVIEW_URL } from './lib/browser.mjs';
+import { launchChromium, targetUrl, DEFAULT_PHONE } from './lib/browser.mjs';
 import { FONT_FILES } from './lib/site-text.mjs';
 
-const url = process.argv[2] ?? PREVIEW_URL;
+const url = targetUrl();
 const browser = await launchChromium();
 let used;
 try {
-  const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
+  const page = await browser.newPage({ viewport: DEFAULT_PHONE });
   await page.goto(url, { waitUntil: 'networkidle' });
   /* 접힌 계좌 패널의 글자도 포함하도록 textContent 를 그대로 읽습니다 */
   used = await page.evaluate(() => {
@@ -33,8 +33,7 @@ try {
 
 const problems = [];
 for (const [family, text] of Object.entries(used)) {
-  /* @font-face 이름은 'Pretendard'·'Gowun Batang', 목록의 이름은 'Pretendard Variable'·'Gowun Batang' */
-  const file = FONT_FILES.find((f) => f.name.startsWith(family));
+  const file = FONT_FILES.find((f) => f.family === family);
   if (!file) {
     problems.push(`서브셋이 없는 글꼴로 조판된 글자가 있습니다: ${family}`);
     continue;

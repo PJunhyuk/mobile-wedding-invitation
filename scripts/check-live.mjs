@@ -8,6 +8,7 @@
  * 주소를 생략하면 wedding.ts 의 share.url (또는 빌드 환경변수 SITE_URL) 을 봅니다 — 자리표시자 그대로면 example.com 을 검사하게 됩니다.
  */
 import { execFileSync } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { loadSource } from './lib/source.mjs';
 
 const [{ share }, { siteUrl }] = await loadSource('/src/data/wedding.ts', '/src/lib/site.ts');
@@ -20,17 +21,12 @@ const problems = [];
 /* 연결 실패 한 번은 네트워크가 잠깐 끊긴 것일 수 있어 5초 뒤 한 번 더 시도합니다 (진짜 장애는 다시 해도 실패합니다).
    한 시간마다 도는 감시가 순간 끊김마다 메일을 보내지 않게 하려는 것입니다. */
 const get = async (url, init) => {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await fetch(url, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(15_000), ...init });
-    } catch (error) {
-      if (attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
-        continue;
-      }
-      problems.push(`${url}: 연결 실패 (${error.cause?.code ?? error.message})`);
-      return null;
-    }
+  const once = () => fetch(url, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(15_000), ...init });
+  try {
+    return await once().catch(() => sleep(5_000).then(once));
+  } catch (error) {
+    problems.push(`${url}: 연결 실패 (${error.cause?.code ?? error.message})`);
+    return null;
   }
 };
 
@@ -64,8 +60,7 @@ if (page) {
 
   /* HTML 이 실제로 가리키는 파일들 — 해시가 붙은 이름이라 이 목록이 곧 현재 배포본입니다 */
   /* 이 사이트의 하위 경로로 시작하는 것만 — 외부 스크립트 주소에 /assets/ 가 들어 있어도 섞이지 않게 */
-  const escaped = base.pathname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const assets = [...html.matchAll(new RegExp(`(?:href|src)="(${escaped}assets/[^"]+)"`, 'g'))].map((m) => m[1]);
+  const assets = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]).filter((u) => u.startsWith(`${base.pathname}assets/`));
   if (assets.length < 4) problems.push(`HTML 이 가리키는 assets 가 ${assets.length}개뿐입니다 (CSS·JS·글꼴 2개가 있어야 합니다)`);
   /* 공유 이미지와 표지 사진도 HTML 이 실제로 가리키는 주소로 봅니다 (하위 경로 배포에서도 맞습니다) */
   const ogImage = html.match(/property="og:image" content="([^"]+)"/)?.[1];

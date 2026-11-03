@@ -7,21 +7,24 @@
 import assert from 'node:assert/strict';
 import { loadSource } from './lib/source.mjs';
 
-const [{ venue }, { naverAppUrl, naverWebUrl, bindNaverMap, mapLinks }, { renderApp }] = await loadSource(
+const [{ venue }, { naverAppUrl, naverWebUrl, kakaoWebUrl, bindNaverMap }, { renderApp }] = await loadSource(
   '/src/data/wedding.ts',
   '/src/lib/maps.ts',
   '/src/render.ts',
 );
 const placeId = venue.map.naverPlaceId;
+const placeQuery = encodeURIComponent(venue.name);
 
-// 0. 장소 ID 가 비어 있으면(자리표시자 상태) 검색 화면으로만 가고 앱은 열지 않습니다
+// 0. 화면의 두 버튼 — 네이버는 같은 탭(앱 열기), 카카오는 새 창. 카카오 공유 링크가 비어 있으면 장소명 검색.
+const html = renderApp();
+assert.ok(html.includes(`href="${naverWebUrl}" data-naver-map`));
+assert.ok(html.includes(`href="${kakaoWebUrl}" target="_blank" rel="noopener noreferrer"`));
+assert.equal(kakaoWebUrl, venue.map.kakao || `https://map.kakao.com/?q=${placeQuery}`);
+
+// 장소 ID 가 비어 있으면(자리표시자 상태) 검색 화면으로만 가고 앱은 열지 않습니다
 if (!placeId) {
-  assert.equal(naverWebUrl, `https://map.naver.com/p/search/${encodeURIComponent(venue.name)}`);
+  assert.equal(naverWebUrl, `https://map.naver.com/p/search/${placeQuery}`);
   for (const ua of ['iPhone', 'Android', 'Windows']) assert.equal(naverAppUrl(ua, 5), null);
-  const [naver, kakao] = mapLinks;
-  const html = renderApp();
-  assert.ok(html.includes(`href="${naver.href}" data-naver-map`));
-  assert.ok(html.includes(`href="${kakao.href}" target="_blank" rel="noopener noreferrer"`));
   console.log('maps check 통과: 네이버 장소 ID 가 비어 있어 검색 주소만 검사했습니다 (wedding.ts 의 venue.map.naverPlaceId 를 채우면 앱 열기 분기도 검사합니다)');
   process.exit(0);
 }
@@ -40,12 +43,6 @@ assert.ok(android.startsWith('intent://?'));
 assert.ok(android.includes(`pinId=${placeId}`));
 assert.ok(android.includes('scheme=nmap;'));
 assert.ok(android.includes(`S.browser_fallback_url=${encodeURIComponent(naverWebUrl)};`));
-
-const [naver, kakao] = mapLinks;
-assert.equal(kakao.href, venue.map.kakao || `https://map.kakao.com/?q=${encodeURIComponent(venue.name)}`);
-const html = renderApp();
-assert.ok(html.includes(`href="${naver.href}" data-naver-map`));
-assert.ok(html.includes(`href="${kakao.href}" target="_blank" rel="noopener noreferrer"`));
 
 // 2. 버튼 동작
 /** 버튼을 한 번 눌렀을 때의 결과: 기본 동작을 막았는지, 어디로 이동했는지 */

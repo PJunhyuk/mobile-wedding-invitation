@@ -1,6 +1,6 @@
 import './styles.css';
 import { renderApp } from './render';
-import { $, $$, prefersReducedMotion, toast, copyText } from './lib/dom';
+import { $, $$, prefersReducedMotion, copyWithToast } from './lib/dom';
 import { bindNaverMap } from './lib/maps';
 
 const app = document.getElementById('app');
@@ -15,24 +15,13 @@ const reduced = prefersReducedMotion();
 const scenes = $$<HTMLElement>('[data-scene]');
 if (!reduced) document.documentElement.classList.add('has-scene-motion');
 
-/* 현재 장면을 보여 주는 세로 인디케이터. 링크라서 원하는 장면으로 바로 이동할 수도 있습니다. */
-const sceneLabels: Record<string, string> = {
-  cover: '표지',
-  invitation: '초대의 글',
-  feature: '대표 사진',
-  info: '예식일',
-  gallery: '갤러리',
-  location: '오시는 길',
-  gift: '마음 전하실 곳',
-  closing: '맺음말',
-};
+/* 현재 장면을 보여 주는 세로 인디케이터. 링크라서 원하는 장면으로 바로 이동할 수도 있습니다. 장면 이름은 render.ts 의 data-scene 값. */
 const sceneRail = document.createElement('nav');
 sceneRail.className = 'scene-rail';
 sceneRail.setAttribute('aria-label', '청첩장 장면 이동');
 sceneRail.innerHTML = scenes
   .map((scene, index) => {
-    const label = sceneLabels[scene.id] ?? '장면';
-    return `<a class="scene-rail__dot" href="#${scene.id}" aria-label="${index + 1}. ${label}"${index === 0 ? ' aria-current="step"' : ''}></a>`;
+    return `<a class="scene-rail__dot" href="#${scene.id}" aria-label="${index + 1}. ${scene.dataset.scene ?? ''}"${index === 0 ? ' aria-current="step"' : ''}></a>`;
   })
   .join('');
 document.body.appendChild(sceneRail);
@@ -45,7 +34,8 @@ const setCurrentScene = (index: number) => {
   }
 };
 
-if ('IntersectionObserver' in window) {
+const canObserve = 'IntersectionObserver' in window;
+if (canObserve) {
   const currentSceneObserver = new IntersectionObserver(
     (entries) => {
       const active = entries.find((entry) => entry.isIntersecting);
@@ -58,7 +48,7 @@ if ('IntersectionObserver' in window) {
   for (const scene of scenes) currentSceneObserver.observe(scene);
 }
 
-if (reduced || !('IntersectionObserver' in window)) {
+if (reduced || !canObserve) {
   for (const scene of scenes) scene.classList.add('is-visible');
 } else {
   const sceneObserver = new IntersectionObserver(
@@ -159,7 +149,7 @@ const preparePhoto = (index: number) => {
 };
 
 const prepareNeighbors = async () => {
-  if (!galleryNear || !galleryFeatured || galleryThumbs.length === 0) return;
+  if (!galleryFeatured || galleryThumbs.length === 0) return;
   const index = galleryIndex;
   await coverReady;
   /* 지금 보이는 사진이 먼저입니다. 기다리는 사이 다른 사진을 골랐다면 그쪽 호출에 맡깁니다. */
@@ -196,12 +186,13 @@ const showGalleryPhoto = (index: number, scrollThumb = false) => {
   const target = galleryThumbs[index];
   if (!galleryFeatured || !target) return;
   galleryIndex = index;
-  /* 프레임이 새 사진의 비율을 따르도록 크기와 --photo-ratio 를 함께 바꿉니다 */
-  galleryFeatured.width = Number(target.dataset.galleryWidth);
-  galleryFeatured.height = Number(target.dataset.galleryHeight);
+  /* 썸네일 <img> 가 원본 크기·설명을 그대로 갖고 있으므로 거기서 읽습니다. 프레임 비율(--photo-ratio)도 함께 바꿉니다. */
+  const thumbImage = target.querySelector('img');
+  galleryFeatured.width = Number(thumbImage?.getAttribute('width'));
+  galleryFeatured.height = Number(thumbImage?.getAttribute('height'));
   galleryFrame?.style.setProperty('--photo-ratio', target.style.getPropertyValue('--photo-ratio'));
   galleryFeatured.src = target.dataset.gallerySrc ?? '';
-  galleryFeatured.alt = target.dataset.galleryAlt ?? '';
+  galleryFeatured.alt = thumbImage?.alt ?? '';
   for (const thumb of galleryThumbs) {
     const current = thumb === target;
     thumb.classList.toggle('is-selected', current);
@@ -265,7 +256,7 @@ const shareUrl = () => {
   return url.toString();
 };
 
-const copyShareUrl = async () => toast((await copyText(shareUrl())) ? '링크를 복사했습니다' : '복사에 실패했습니다');
+const copyShareUrl = () => copyWithToast(shareUrl(), '링크를 복사했습니다');
 
 async function doShare() {
   if (navigator.share) {
@@ -285,11 +276,9 @@ document.addEventListener('click', async (e) => {
   if (!target) return;
   const action = target.dataset.action;
   switch (action) {
-    case 'copy': {
-      const ok = await copyText(target.dataset.copy ?? '');
-      toast(ok ? (target.dataset.toast ?? '복사했습니다') : '복사에 실패했습니다');
+    case 'copy':
+      await copyWithToast(target.dataset.copy ?? '', target.dataset.toast ?? '복사했습니다');
       break;
-    }
     case 'gallery-select':
       showGalleryPhoto(galleryThumbs.indexOf(target as HTMLButtonElement));
       break;
@@ -301,12 +290,11 @@ document.addEventListener('click', async (e) => {
       break;
     case 'gift-tab': {
       const root = target.closest<HTMLElement>('[data-gift]');
-      const index = Number(target.dataset.giftTab ?? 0);
       if (!root) break;
+      const tabs = $$<HTMLButtonElement>('[data-gift-tab]', root);
+      const index = tabs.indexOf(target as HTMLButtonElement);
       const selected = target.getAttribute('aria-expanded') === 'true';
-      for (const tab of $$<HTMLButtonElement>('[data-gift-tab]', root)) {
-        tab.setAttribute('aria-expanded', String(!selected && Number(tab.dataset.giftTab) === index));
-      }
+      for (const tab of tabs) tab.setAttribute('aria-expanded', String(!selected && tab === target));
       for (const [panelIndex, panel] of $$<HTMLElement>('[data-gift-panel]', root).entries()) {
         panel.hidden = selected || panelIndex !== index;
       }

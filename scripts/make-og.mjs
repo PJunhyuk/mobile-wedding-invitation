@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadSource } from './lib/source.mjs';
 
-const [{ photos }] = await loadSource('/src/data/wedding.ts');
+const [{ photos }, { publicFile }] = await loadSource('/src/data/wedding.ts', '/src/lib/paths.ts');
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const src = path.join(root, 'public', photos.cover.src);
+const src = path.join(root, publicFile(photos.cover.src));
 const out = path.join(root, 'public/og.jpg');
 
 const meta = await sharp(src).metadata();

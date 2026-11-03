@@ -12,11 +12,8 @@ export const naverWebUrl = placeId
   ? `https://map.naver.com/p/entry/place/${placeId}`
   : `https://map.naver.com/p/search/${placeName}`;
 
-/** 지도 앱 버튼 링크. 카카오는 공유 링크를 쓰고, 비어 있으면 장소명으로 검색합니다. */
-export const mapLinks = [
-  { id: 'naver', label: '네이버지도', href: naverWebUrl },
-  { id: 'kakao', label: '카카오지도', href: venue.map.kakao || `https://map.kakao.com/?q=${placeName}` },
-];
+/** 카카오지도 버튼 링크 — 공유 링크를 쓰고, 비어 있으면 장소명으로 검색합니다. */
+export const kakaoWebUrl = venue.map.kakao || `https://map.kakao.com/?q=${placeName}`;
 
 /**
  * 네이버지도 앱을 바로 여는 주소. 앱 스킴이 없는 플랫폼(PC 등)은 null.

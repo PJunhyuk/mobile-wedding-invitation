@@ -10,7 +10,7 @@
  * 같은 함수를 쓰면 "생성기가 자기 자신과 일치하는지"만 검사하게 되어,
  * 생성기가 글자를 놓치면 검사도 같이 놓칩니다.
  */
-import { readFile, access, readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import * as fontkit from 'fontkit';
 import { literalText, serifChars, SCREEN_SYMBOLS, FONT_FILES } from './lib/site-text.mjs';
 import { loadSource } from './lib/source.mjs';
@@ -18,11 +18,12 @@ import { loadSource } from './lib/source.mjs';
 const problems = [];
 
 /* 프로젝트의 해석기(vite)로 렌더러와 데이터를 그대로 불러옵니다 — 빌드와 같은 결과를 봅니다 */
-const [{ renderApp }, { photos, invitation }] = await loadSource('/src/render.ts', '/src/data/wedding.ts');
+const [{ renderApp }, { photos, invitation }, { unescapeHtml: decode }] = await loadSource(
+  '/src/render.ts',
+  '/src/data/wedding.ts',
+  '/src/lib/dom.ts',
+);
 const html = renderApp();
-
-const decode = (s) =>
-  s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
 const painted = [
   decode(html.replace(/<[^>]*>/g, '\n')), // 화면에 그려지는 글
@@ -44,23 +45,16 @@ for (const { out, serifOnly } of FONT_FILES) {
   }
 }
 
-// 2. 사진 데이터
-const all = [photos.cover, photos.feature, photos.closing, ...photos.gallery];
-for (const photo of all) {
-  for (const file of [photo.src, photo.thumb]) {
-    if (!file) continue;
-    try {
-      await access(file.replace(/^\.?\//, 'public/'));
-    } catch {
-      problems.push(`파일 없음: ${file}`);
-    }
-  }
-}
-const referenced = new Set(all.flatMap((photo) => [photo.src, photo.thumb]));
+// 2. 사진 데이터 — wedding.ts 가 참조하는 파일은 있어야 하고, 폴더의 파일은 전부 참조되어야 합니다
+const all = Object.values(photos).flat();
+const referenced = new Set(all.flatMap((photo) => [photo.src, photo.thumb]).filter(Boolean));
+const existing = new Set();
 for (const dir of ['/images', '/images/thumbs']) {
-  for (const name of await readdir(`public${dir}`)) {
-    if (name.endsWith('.webp') && !referenced.has(`${dir}/${name}`)) problems.push(`쓰지 않는 파일: public${dir}/${name} — 지우거나 wedding.ts 에 넣으세요`);
-  }
+  for (const name of await readdir(`public${dir}`)) existing.add(`${dir}/${name}`);
+}
+for (const file of referenced) if (!existing.has(file)) problems.push(`파일 없음: ${file}`);
+for (const file of existing) {
+  if (file.endsWith('.webp') && !referenced.has(file)) problems.push(`쓰지 않는 파일: public${file} — 지우거나 wedding.ts 에 넣으세요`);
 }
 
 // 3. 경로: 서버가 모르는 주소(/foo/ 등)에도 이 페이지를 돌려주므로, 상대 경로는 그런 주소에서 빈 화면·빈 사진이 됩니다

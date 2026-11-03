@@ -1,4 +1,4 @@
-import { html, raw, escapeHtml } from './lib/dom';
+import { html, raw, lines, escapeHtml } from './lib/dom';
 import {
   groom,
   bride,
@@ -13,7 +13,7 @@ import {
   type AccountEntry,
 } from './data/wedding';
 import { when, dateLine, timeLine, monthGrid, ddayPhrase } from './lib/date';
-import { mapLinks } from './lib/maps';
+import { naverWebUrl, kakaoWebUrl } from './lib/maps';
 import { withBase } from './lib/site';
 
 const hasParents = (p: Person) => p.parents.father.trim() !== '' || p.parents.mother.trim() !== '';
@@ -43,7 +43,7 @@ const ratioStyle = (p: Photo) => `--photo-ratio: ${p.width / p.height}`;
 
 /* ---------- 1. 표지 ---------- */
 const cover = () => html`
-  <section class="cover scene scene--still" id="cover" aria-labelledby="cover-title" data-scene>
+  <section class="cover scene scene--still" id="cover" aria-labelledby="cover-title" data-scene="표지">
     <div class="cover__main">
       <figure class="cover__photo" data-photo-no-zoom>
         ${raw(picture(photos.cover, { priority: true, className: 'cover__img' }))}
@@ -100,21 +100,21 @@ const inviteSource = () => {
 };
 
 const invite = () => html`
-  <section class="page page--invite invite scene" id="invitation" aria-labelledby="invite-title" data-scene>
+  <section class="page page--invite invite scene" id="invitation" aria-labelledby="invite-title" data-scene="초대의 글">
     <h2 class="scene__title invite__title" id="invite-title">INVITATION</h2>
     <div class="invite__copy" lang="ko">
       ${raw(invitation.stanzas.map((stanza) => `<p>${stanza.map((line) => `<span>${escapeHtml(line)}</span>`).join('')}</p>`).join(''))}
       ${raw(inviteSource())}
     </div>
     <span class="invite__rule" aria-hidden="true"></span>
-    <p class="invite__message">${raw(invitation.message.map(escapeHtml).join('<br />'))}</p>
+    <p class="invite__message">${lines(invitation.message)}</p>
     ${raw(inviteFamily())}
   </section>
 `;
 
 /* ---------- 3. 대표 장면 ---------- */
 const feature = () => html`
-  <section class="feature scene scene--still" id="feature" aria-labelledby="feature-title" data-scene>
+  <section class="feature scene scene--still" id="feature" aria-labelledby="feature-title" data-scene="대표 사진">
     <h2 class="visually-hidden" id="feature-title">대표 사진</h2>
     <figure class="feature__frame" data-photo-no-zoom>
       ${raw(picture(photos.feature, { className: 'feature__img' }))}
@@ -165,7 +165,7 @@ const calendar = () => {
 const info = () => {
   const [ddayEm, ddaySuffix] = ddayPhrase();
   return html`
-    <section class="page page--info info scene" id="info" aria-labelledby="info-title" data-scene>
+    <section class="page page--info info scene" id="info" aria-labelledby="info-title" data-scene="예식일">
       <h2 class="scene__title info__title" id="info-title">WEDDING DAY</h2>
       <div class="info__body">
         <p class="info__line"><time datetime="${ceremony.start}">${dateLine} ${timeLine}</time></p>
@@ -189,7 +189,7 @@ const gallery = () => {
   const selected = list[0];
   if (!selected) return '';
   return html`
-  <section class="page page--gallery gallery scene scene--still" id="gallery" aria-labelledby="gallery-title" data-scene>
+  <section class="page page--gallery gallery scene scene--still" id="gallery" aria-labelledby="gallery-title" data-scene="갤러리">
     <h2 class="scene__title gallery__title" id="gallery-title">GALLERY</h2>
     <figure class="gallery__featured" data-photo-no-zoom style="${ratioStyle(selected)}">
       ${raw(picture(selected, { className: 'gallery__featured-img' }))}
@@ -206,10 +206,7 @@ const gallery = () => {
                 class="gallery__thumb${first ? ' is-selected' : ''}"
                 data-action="gallery-select"
                 style="${ratioStyle(p)}"
-                data-gallery-width="${p.width}"
-                data-gallery-height="${p.height}"
                 data-gallery-src="${withBase(p.src)}"
-                data-gallery-alt="${p.alt}"
                 aria-label="${p.alt}"
                 aria-current="${String(first)}"
               >${raw(picture(p, { className: 'gallery__thumb-img', thumb: true }))}</button>
@@ -226,7 +223,7 @@ const gallery = () => {
 
 /* ---------- 6. 오시는 길 ---------- */
 const location = () => html`
-  <section class="page page--venue venue scene scene--long" id="location" aria-labelledby="venue-title" data-scene>
+  <section class="page page--venue venue scene scene--long" id="location" aria-labelledby="venue-title" data-scene="오시는 길">
     <h2 class="scene__title" id="venue-title">LOCATION</h2>
 
     <div class="venue__head">
@@ -236,24 +233,16 @@ const location = () => html`
     </div>
 
     <div class="location__map-links" role="group" aria-label="지도 앱 선택">
-      ${raw(
-        mapLinks
-          .map(
-            (m) =>
-              /* 네이버는 같은 탭에서 앱을 직접 엽니다 (main.ts 가 data-naver-map 에 연결). 카카오는 새 창의 공유 링크. */
-              m.id === 'naver'
-                ? html`<a href="${m.href}" data-naver-map aria-label="${m.label}에서 ${venue.name}">${m.label}</a>`
-                : html`<a href="${m.href}" target="_blank" rel="noopener noreferrer" aria-label="${m.label}에서 ${venue.name} 검색 (새 창)">${m.label}</a>`,
-          )
-          .join(''),
-      )}
+      <!-- 네이버는 같은 탭에서 앱을 직접 엽니다 (main.ts 가 data-naver-map 에 연결). 카카오는 새 창의 공유 링크. -->
+      <a href="${naverWebUrl}" data-naver-map aria-label="네이버지도에서 ${venue.name}">네이버지도</a>
+      <a href="${kakaoWebUrl}" target="_blank" rel="noopener noreferrer" aria-label="카카오지도에서 ${venue.name} 검색 (새 창)">카카오지도</a>
     </div>
 
     <div class="location__notice">
       <p class="location__notice-title">NOTICE</p>
       ${raw(
         locationNotice.lines
-          .map((line) => `<p>${(Array.isArray(line) ? line : [line]).map(escapeHtml).join('<br />')}</p>`)
+          .map((line) => `<p>${lines(Array.isArray(line) ? line : [line]).value}</p>`)
           .join(''),
       )}
       <p class="location__bus-lines">
@@ -306,7 +295,7 @@ const gift = () => {
   const groups = accounts.filter((g) => g.entries.some(hasNumber));
   if (groups.length === 0) return '';
   return html`
-  <section class="page page--gift gift scene" id="gift" aria-labelledby="gift-title" data-scene data-gift>
+  <section class="page page--gift gift scene" id="gift" aria-labelledby="gift-title" data-scene="마음 전하실 곳" data-gift>
     <h2 class="scene__title" id="gift-title">WITH YOUR HEART</h2>
     <div class="gift__content">
       <p class="gift__heading">마음 전하실 곳</p>
@@ -343,7 +332,7 @@ const gift = () => {
 
 /* ---------- 8. 마지막 장 ---------- */
 const closing = () => html`
-  <section class="page page--closing closing scene scene--still" id="closing" aria-labelledby="closing-title" data-scene>
+  <section class="page page--closing closing scene scene--still" id="closing" aria-labelledby="closing-title" data-scene="맺음말">
     <figure class="closing__photo" data-photo-no-zoom style="${ratioStyle(photos.closing)}">
       ${raw(picture(photos.closing, { className: 'closing__img', loading: 'lazy' }))}
     </figure>
